@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
 
+import { formatCurrency } from '../utils/formatters';
 // VVV IMPORT THE HOOK VVV
 import { useSalesOrderForm } from '../hooks/useSalesOrderForm'; 
 // Import Redux actions
@@ -227,7 +228,7 @@ function SalesOrderPage() {
                                         type="text" 
                                         id={field.toLowerCase().replace(/ /g, '')} 
                                         readOnly 
-                                        value={field === 'Total Excl' ? orderData.totals.totalExcl.toFixed(2) : field === 'Total Tax' ? orderData.totals.totalTax.toFixed(2) : orderData.totals.totalIncl.toFixed(2)}
+                                        value={field === 'Total Excl' ? formatCurrency(orderData.totals.totalExcl) : field === 'Total Tax' ? formatCurrency(orderData.totals.totalTax) : formatCurrency(orderData.totals.totalIncl)}
                                         className="flex-grow p-1.5 border-2 border-black rounded-none bg-gray-100 text-right font-bold" 
                                     />
                                 </div>
