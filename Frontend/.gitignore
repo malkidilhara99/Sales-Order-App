@@ -1,0 +1,32 @@
+#------------------------------------------------------------------------------
+# Ignore all Visual Studio build and cache files
+#------------------------------------------------------------------------------
+
+# Visual Studio temporary files
+.vs/
+*.suo
+*.user
+*.pdb
+*.sdf
+*.log
+*.rptproj
+
+# Build Folders
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+
+# NuGet packages
+# Uncomment the next line if you want to ignore the whole packages folder
+# packages/
+*.nupkg
+
+# Temporary files created by VS
+*.vcxproj.user
+*.vcxproj.filters
+*.log
+*.tlog
+
+# Misc Files
+Thumbs.db
