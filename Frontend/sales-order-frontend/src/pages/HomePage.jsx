@@ -1,5 +1,8 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+
+import { fetchSalesOrders } from '../redux/slice/salesOrderSlice';
+import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import React, { useEffect } from 'react';
 
 const COLUMN_COUNT = 7;
 const ROW_COUNT = 8; // As per the Figma design
@@ -7,6 +10,40 @@ const ROW_COUNT = 8; // As per the Figma design
 function HomePage() {
   const columns = Array.from({ length: COLUMN_COUNT }, (_, i) => `Col ${i + 1}`);
   const rows = Array.from({ length: ROW_COUNT });
+
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  // Get data and status from the Redux store
+  const { orders, isLoading, error } = useSelector((state) => state.salesOrders);
+
+  // VVV CORE LOGIC: Fetch data when the component loads VVV
+  useEffect(() => {
+    // Dispatch the asynchronous thunk action
+    dispatch(fetchSalesOrders());
+  }, [dispatch]);
+
+
+  const handleDoubleClick = (id) => {
+    // Navigates to the edit page when a row is double-clicked (Requirement)
+    navigate(`/sales-order/${id}`);
+  };
+
+  const handleAddNew = () => {
+    // Navigates to the form page for a new order
+    navigate('/sales-order/new');
+  };
+
+  // --- Displaying Loading/Error States ---
+  if (isLoading) {
+    return <div className="text-center p-12 text-blue-600 font-semibold">Loading Orders...</div>;
+  }
+  if (error) {
+    return <div className="text-center p-12 text-red-600 font-semibold">Error: {error}</div>;
+  }
+
+  // Determine the rows to display (real data + empty placeholders for padding)
+  const displayRows = orders.length > 0 ? orders : Array.from({ length: 8 });
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6">
@@ -33,12 +70,13 @@ function HomePage() {
           <Link
             to="/sales-order/new"
             className="bg-gray-200 border-2 border-black text-black px-4 py-1 rounded-md shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-gray-300 active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all duration-150"
-          >
+          onClick={handleAddNew}>
             Add New
           </Link>
         </div>
 
         {/* Table Area */}
+ {/* Table Area */}
         <div className="p-4">
           <div className="border-2 border-black overflow-x-auto">
             <table className="min-w-full border-collapse">
@@ -58,16 +96,35 @@ function HomePage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((_, rowIndex) => (
-                  <tr key={rowIndex} className={rowIndex % 2 !== 0 ? 'bg-gray-100' : 'bg-white'}>
-                    {columns.map((_, colIndex) => (
-                      <td
-                        key={colIndex}
-                        className="px-4 py-4 border-t-2 border-r-2 border-black last:border-r-0"
-                      >
+                {/* Map over actual orders OR empty array for padding */}
+                {displayRows.map((order, rowIndex) => (
+                  <tr 
+                    key={rowIndex} 
+                    className="cursor-pointer"
+                    onDoubleClick={() => order && handleDoubleClick(order.id)}
+                  >
+                    {/* Render Columns */}
+                    {columns.map((_, colIndex) => {
+                      // Determine the cell content based on data availability
+                      let content = order ? (
+                        colIndex === 0 ? order.invoiceNo : 
+                        colIndex === 1 ? new Date(order.invoiceDate).toLocaleDateString() : 
+                        colIndex === 2 ? order.customerName : 
+                        colIndex === 3 ? `$${order.totalIncl.toFixed(2)}` : 
+                        '—'
+                      ) : (
                         <span className="text-gray-500">"</span>
-                      </td>
-                    ))}
+                      );
+
+                      return (
+                        <td
+                          key={colIndex}
+                          className="px-4 py-2 border-t-2 border-r-2 border-black last:border-r-0"
+                        >
+                          {content}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
