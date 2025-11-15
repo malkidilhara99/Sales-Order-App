@@ -1,5 +1,5 @@
 
-import { fetchSalesOrders } from '../redux/slice/salesOrderSlice';
+import { fetchSalesOrders } from '../redux/slices/salesOrderSlice';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import React, { useEffect } from 'react';

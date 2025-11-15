@@ -7,7 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 // Import Redux
 import { Provider } from 'react-redux';
-import { store } from './redux/slice/store'; 
+import { store } from './redux/slices/store'; 
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

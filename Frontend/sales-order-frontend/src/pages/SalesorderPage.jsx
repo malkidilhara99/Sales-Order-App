@@ -1,66 +1,25 @@
-import React, { useEffect, useState } from 'react';
+// src/pages/SalesOrderPage.jsx
+import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
-// Import Redux and API functions
-import { fetchClients } from '../redux/slice/clientSlice';
-import { fetchItems } from '../redux/slice/itemSlice';
-import { createSalesOrder, updateSalesOrder, getSalesOrderById } from '../services/orderApi';
-import { fetchSalesOrders } from '../redux/slice/salesOrderSlice'; 
+// VVV IMPORT THE HOOK VVV
+import { useSalesOrderForm } from '../hooks/useSalesOrderForm'; 
+// Import Redux actions
+import { fetchClients } from '../redux/slices/clientSlice';
+import { fetchItems } from '../redux/slices/itemSlice';
 
-// --- Initial State and Helpers ---
-
-const initialOrderState = {
-    clientId: '',
-    invoiceNo: '',
-    invoiceDate: new Date().toISOString().substring(0, 10),
-    referenceNo: '',
-    note: '',
-    address: { address1: '', address2: '', address3: '', suburb: '', state: '', postCode: '' },
-    orderItems: [{ itemId: '', note: '', quantity: 1, tax: 0, price: 0, exclAmount: 0, taxAmount: 0, inclAmount: 0 }],
-    totals: { totalExcl: 0, totalTax: 0, totalIncl: 0 }
-};
-
-// CORE CALCULATION LOGIC (Requirement 5)
-const calculateLineItem = (item, itemsList) => {
-    const selectedItem = itemsList.find(i => i.id === item.itemId);
-    const price = selectedItem ? selectedItem.price : 0; 
-    
-    const quantity = Number(item.quantity) || 0;
-    const taxRate = Number(item.tax) || 0;
-
-    const exclAmount = quantity * price;                     // Excl Amount = Quantity * Price
-    const taxAmount = (exclAmount * taxRate) / 100;          // Tax Amount = Excl Amount * Tax Rate/100
-    const inclAmount = exclAmount + taxAmount;               // Incl Amount = Excl Amount + Tax Amount
-
-    return {
-        ...item,
-        price: price,
-        exclAmount: exclAmount,
-        taxAmount: taxAmount,
-        inclAmount: inclAmount
-    };
-};
-
-const calculateGrandTotals = (items) => {
-    const totalExcl = items.reduce((sum, item) => sum + item.exclAmount, 0);
-    const totalTax = items.reduce((sum, item) => sum + item.taxAmount, 0);
-    const totalIncl = totalExcl + totalTax;
-
-    return { totalExcl, totalTax, totalIncl };
-};
-
-// Reusable component for form fields (retained from your static file)
-const FormField = ({ label, id, type = 'text', value, onChange, options = [], className = '' }) => (
+// --- Reusable FormField Component ---
+const FormField = ({ label, id, type = 'text', value, onChange, options = [], name, className = '' }) => (
     <div className={`flex flex-col sm:flex-row sm:items-center ${className}`}>
       <label htmlFor={id} className="w-full sm:w-32 text-sm font-medium text-gray-800 mb-1 sm:mb-0">
         {label}
       </label>
       {type === 'textarea' ? (
-        <textarea id={id} value={value} onChange={onChange} className="flex-grow p-1.5 border-2 border-black rounded-none" rows="4"></textarea>
+        <textarea id={id} name={name} value={value} onChange={onChange} className="flex-grow p-1.5 border-2 border-black rounded-none" rows="4"></textarea>
       ) : type === 'select' ? (
         <div className="relative flex-grow">
-          <select id={id} value={value} onChange={onChange} className="w-full p-1.5 border-2 border-black rounded-none appearance-none bg-white">
+          <select id={id} name={name} value={value} onChange={onChange} className="w-full p-1.5 border-2 border-black rounded-none appearance-none bg-white">
             <option value="">Select Customer...</option>
             {options.map(opt => (
                 <option key={opt.id} value={opt.id}>{opt.customerName}</option>
@@ -71,7 +30,7 @@ const FormField = ({ label, id, type = 'text', value, onChange, options = [], cl
           </div>
         </div>
       ) : (
-        <input type={type} id={id} value={value} onChange={onChange} readOnly={id.includes('total')} className="flex-grow p-1.5 border-2 border-black rounded-none" />
+        <input type={type} id={id} name={name} value={value} onChange={onChange} className="flex-grow p-1.5 border-2 border-black rounded-none" />
       )}
     </div>
   );
@@ -82,162 +41,31 @@ const totalsFields = ['Total Excl', 'Total Tax', 'Total Incl'];
 function SalesOrderPage() {
     const { id } = useParams();
     const dispatch = useDispatch();
-    const navigate = useNavigate();
-
+    
+    // Fetch master lists from Redux
     const clientsState = useSelector(state => state.clients);
     const itemsState = useSelector(state => state.items);
-    
-    const [orderData, setOrderData] = useState(initialOrderState);
 
-    // --- EFFECT: FETCH DATA ---
+    // VVV CALL THE HOOK TO GET ALL LOGIC AND STATE VVV
+    const {
+        orderData,
+        handleClientSelect,
+        handleInputChange,
+        handleItemChange,
+        addNewLineItem,
+        removeItemLine,
+        handleSave,
+    } = useSalesOrderForm(id, clientsState.list, itemsState.list);
+
+    // Fetch master lists (Clients/Items) on component mount
     useEffect(() => {
-        // Fetch clients and items lists when the page mounts
         if (clientsState.list.length === 0) dispatch(fetchClients());
         if (itemsState.list.length === 0) dispatch(fetchItems());
-
-        // Logic for EDITING an existing order (GET /api/salesorders/{id})
-        if (id) {
-            const fetchOrderDetails = async () => {
-                const order = await getSalesOrderById(id);
-                if (order) {
-                    setOrderData(prev => ({
-                        ...prev,
-                        clientId: order.clientId,
-                        invoiceNo: order.invoiceNo,
-                        invoiceDate: order.invoiceDate.substring(0, 10),
-                        referenceNo: order.referenceNo,
-                        note: order.note,
-                        orderItems: order.orderItems.map(item => calculateLineItem(item, itemsState.list)),
-                        totals: calculateGrandTotals(order.orderItems)
-                    }));
-                }
-            };
-            if (itemsState.list.length > 0) {
-                 fetchOrderDetails();
-            }
-        }
-    }, [id, dispatch, clientsState.list.length, itemsState.list.length]);
-
-
-    // --- HANDLERS ---
-    
-    const handleClientSelect = (e) => {
-        const clientId = e.target.value;
-        const selectedClient = clientsState.list.find(c => c.id.toString() === clientId);
-        
-        if (selectedClient) {
-            setOrderData(prev => ({
-                ...prev,
-                clientId: parseInt(clientId),
-                address: {
-                    address1: selectedClient.address1 || '',
-                    address2: selectedClient.address2 || '',
-                    address3: selectedClient.address3 || '',
-                    suburb: selectedClient.suburb || '',
-                    state: selectedClient.state || '',
-                    postCode: selectedClient.postCode || '',
-                }
-            }));
-        } else {
-            setOrderData(prev => ({ ...prev, clientId: '' }));
-        }
-    };
-
-    const handleAddressChange = (e) => {
-        const { name, value } = e.target;
-        setOrderData(prev => ({
-            ...prev,
-            address: { ...prev.address, [name]: value }
-        }));
-    };
-
-    const handleInvoiceChange = (e) => {
-        const { name, value } = e.target;
-        setOrderData(prev => ({ ...prev, [name]: value }));
-    };
-
-    // Handler for changes in the line item grid
-    const handleItemChange = (index, e) => {
-        const { name, value } = e.target;
-        const newItems = [...orderData.orderItems];
-        
-        newItems[index][name] = (name === 'itemId' || name === 'quantity' || name === 'tax') ? Number(value) : value;
-
-        const updatedItem = calculateLineItem(newItems[index], itemsState.list);
-        newItems[index] = updatedItem;
-
-        setOrderData(prev => {
-            const newTotals = calculateGrandTotals(newItems);
-            return {
-                ...prev,
-                orderItems: newItems,
-                totals: newTotals
-            };
-        });
-    };
-
-    const addNewLineItem = () => {
-        setOrderData(prev => ({
-            ...prev,
-            orderItems: [
-                ...prev.orderItems,
-                { itemId: '', note: '', quantity: 1, tax: 0, price: 0, exclAmount: 0, taxAmount: 0, inclAmount: 0 }
-            ]
-        }));
-    };
-
-    const removeItemLine = (index) => {
-        const newItems = orderData.orderItems.filter((_, i) => i !== index);
-        setOrderData(prev => ({
-            ...prev,
-            orderItems: newItems,
-            totals: calculateGrandTotals(newItems)
-        }));
-    };
-
-    const handleSave = async () => {
-        // Validation check (basic)
-        if (!orderData.clientId || orderData.orderItems.length === 0 || orderData.orderItems.some(i => !i.itemId)) {
-            alert('Please select a customer and at least one item.');
-            return;
-        }
-
-        const orderToSave = {
-            clientId: orderData.clientId,
-            invoiceNo: orderData.invoiceNo,
-            invoiceDate: orderData.invoiceDate,
-            referenceNo: orderData.referenceNo,
-            note: orderData.note,
-            orderItems: orderData.orderItems.map(item => ({
-                itemId: item.itemId,
-                note: item.note,
-                quantity: item.quantity,
-                tax: item.tax,
-            }))
-        };
-        
-        try {
-            if (id) {
-                // PUT logic for editing
-                await updateSalesOrder(id, orderToSave);
-                alert(`Order #${id} updated successfully!`);
-            } else {
-                // POST logic for creating
-                await createSalesOrder(orderToSave);
-                alert('New order created successfully!');
-            }
-            dispatch(fetchSalesOrders()); // Refresh the home list
-            navigate('/');
-        } catch (error) {
-            alert(`Error saving order. Check console for details.`);
-            console.error(error);
-        }
-    };
-
+    }, [dispatch, clientsState.list.length, itemsState.list.length]);
 
     // --- UI Structure ---
     if (clientsState.isLoading || itemsState.isLoading) return <div className="text-center p-12">Loading Data...</div>;
-    
+
     return (
         <div className="min-h-screen bg-gray-100 p-4 sm:p-6">
             <div className="max-w-7xl mx-auto border-2 border-black bg-white shadow-lg font-sans">
@@ -265,7 +93,7 @@ function SalesOrderPage() {
                         className="bg-gray-200 border-2 border-black text-black px-4 py-1 rounded-md shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-gray-300 active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all duration-150 flex items-center space-x-2"
                     >
                         <span className="text-lg">✔</span>
-                        <span>Save Order</span>
+                        <span>{id ? 'Update Order' : 'Save Order'}</span>
                     </button>
                 </div>
 
@@ -275,20 +103,24 @@ function SalesOrderPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
                         {/* Customer Details */}
                         <div className="space-y-2">
-                            <FormField label="Customer Name" id="customerName" type="select" value={orderData.clientId} onChange={handleClientSelect} options={clientsState.list} />
-                            <FormField label="Address 1" id="address1" value={orderData.address.address1} onChange={handleAddressChange} name="address1" />
-                            <FormField label="Address 2" id="address2" value={orderData.address.address2} onChange={handleAddressChange} name="address2" />
-                            <FormField label="Address 3" id="address3" value={orderData.address.address3} onChange={handleAddressChange} name="address3" />
-                            <FormField label="Suburb" id="suburb" value={orderData.address.suburb} onChange={handleAddressChange} name="suburb" />
-                            <FormField label="State" id="state" value={orderData.address.state} onChange={handleAddressChange} name="state" />
-                            <FormField label="Post Code" id="postCode" value={orderData.address.postCode} onChange={handleAddressChange} name="postCode" />
+                            <FormField 
+                                label="Customer Name" id="customerName" type="select" 
+                                value={orderData.clientId} onChange={handleClientSelect} options={clientsState.list} 
+                                name="clientId"
+                            />
+                            <FormField label="Address 1" id="address1" value={orderData.address.address1} onChange={(e) => handleInputChange(e, 'address')} name="address1" />
+                            <FormField label="Address 2" id="address2" value={orderData.address.address2} onChange={(e) => handleInputChange(e, 'address')} name="address2" />
+                            <FormField label="Address 3" id="address3" value={orderData.address.address3} onChange={(e) => handleInputChange(e, 'address')} name="address3" />
+                            <FormField label="Suburb" id="suburb" value={orderData.address.suburb} onChange={(e) => handleInputChange(e, 'address')} name="suburb" />
+                            <FormField label="State" id="state" value={orderData.address.state} onChange={(e) => handleInputChange(e, 'address')} name="state" />
+                            <FormField label="Post Code" id="postCode" value={orderData.address.postCode} onChange={(e) => handleInputChange(e, 'address')} name="postCode" />
                         </div>
                         {/* Invoice Details */}
                         <div className="space-y-2">
-                            <FormField label="Invoice No." id="invoiceNo" value={orderData.invoiceNo} onChange={handleInvoiceChange} name="invoiceNo" />
-                            <FormField label="Invoice Date" id="invoiceDate" type="date" value={orderData.invoiceDate} onChange={handleInvoiceChange} name="invoiceDate" />
-                            <FormField label="Reference no" id="referenceNo" value={orderData.referenceNo} onChange={handleInvoiceChange} name="referenceNo" />
-                            <FormField label="Note" id="note" type="textarea" value={orderData.note} onChange={handleInvoiceChange} name="note" />
+                            <FormField label="Invoice No." id="invoiceNo" value={orderData.invoiceNo} onChange={(e) => handleInputChange(e, 'invoice')} name="invoiceNo" />
+                            <FormField label="Invoice Date" id="invoiceDate" type="date" value={orderData.invoiceDate} onChange={(e) => handleInputChange(e, 'invoice')} name="invoiceDate" />
+                            <FormField label="Reference no" id="referenceNo" value={orderData.referenceNo} onChange={(e) => handleInputChange(e, 'invoice')} name="referenceNo" />
+                            <FormField label="Note" id="note" type="textarea" value={orderData.note} onChange={(e) => handleInputChange(e, 'invoice')} name="note" />
                         </div>
                     </div>
 
@@ -345,7 +177,7 @@ function SalesOrderPage() {
                                         </td>
                                         {/* Price (Read-only) */}
                                         <td className="px-2 py-1 border-t-2 border-r-2 border-black last:border-r-0 text-sm font-medium text-gray-700">
-                                            {item.price.toFixed(2)}
+                                            ${item.price.toFixed(2)}
                                         </td>
                                         {/* Tax Rate Input */}
                                         <td className="px-2 py-1 border-t-2 border-r-2 border-black last:border-r-0">
@@ -353,15 +185,15 @@ function SalesOrderPage() {
                                         </td>
                                         {/* Excl Amount (Read-only) */}
                                         <td className="px-2 py-1 border-t-2 border-r-2 border-black last:border-r-0 text-sm font-semibold text-gray-800">
-                                            {item.exclAmount.toFixed(2)}
+                                            ${item.exclAmount.toFixed(2)}
                                         </td>
                                         {/* Tax Amount (Read-only) */}
                                         <td className="px-2 py-1 border-t-2 border-r-2 border-black last:border-r-0 text-sm font-semibold text-gray-800">
-                                            {item.taxAmount.toFixed(2)}
+                                            ${item.taxAmount.toFixed(2)}
                                         </td>
                                         {/* Incl Amount (Read-only) */}
                                         <td className="px-2 py-1 border-t-2 border-r-2 border-black last:border-r-0 text-sm text-green-700 font-bold">
-                                            {item.inclAmount.toFixed(2)}
+                                            ${item.inclAmount.toFixed(2)}
                                         </td>
                                         {/* Actions */}
                                         <td className="px-2 py-1 border-t-2 border-r-2 border-black last:border-r-0 text-center">

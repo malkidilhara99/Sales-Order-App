@@ -1,9 +1,8 @@
 // src/redux/store.js
 import { configureStore } from '@reduxjs/toolkit';
-import salesOrderReducer from './salesOrderSlice'; // <-- Check import path
-import clientReducer from './clientSlice'; // <-- Check import path
-import itemReducer from './itemSlice';     // <-- Check import path
-
+import salesOrderReducer from './salesOrderSlice'; 
+import clientReducer from './clientSlice'; 
+import itemReducer from './itemSlice';    
 export const store = configureStore({
   reducer: {
     // VVV THESE KEYS MUST BE PRESENT AND SPELLED EXACTLY VVV
