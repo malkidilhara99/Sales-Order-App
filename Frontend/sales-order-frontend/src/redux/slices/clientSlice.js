@@ -1,10 +1,9 @@
 // src/redux/slices/clientSlice.js
 
-// VVV ADD createAsyncThunk HERE VVV
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getAllClients } from '../../services/orderApi'; 
 
-// VVV EXPORT THE THUNK HERE VVV
+
 export const fetchClients = createAsyncThunk(
   'clients/fetchClients',
   async (_, { rejectWithValue }) => {

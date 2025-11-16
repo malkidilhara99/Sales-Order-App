@@ -15,7 +15,7 @@ export const getAllSalesOrders = async () => {
     }
 };
 
-// VVV REQUIRED BY PRINT VIEW AND EDIT PAGE VVV
+
 export const getSalesOrderById = async (id) => {
     try {
         // GET /api/salesorders/{id}

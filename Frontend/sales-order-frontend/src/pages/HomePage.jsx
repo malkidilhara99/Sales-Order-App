@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchSalesOrders } from '../redux/slices/salesOrderSlice'; 
 import { formatDate } from '../utils/formatters'; 
-import { formatCurrency } from '../utils/formatters'; // <-- Ensure this is imported and used
+import { formatCurrency } from '../utils/formatters'; 
 
 const columns = ['Invoice No.', 'Date', 'Customer Name', 'Total Incl.', 'Reference No.', 'Total Items', 'Actions'];
 
@@ -14,7 +14,7 @@ function HomePage() {
   // Get data and status from the Redux store
   const { orders, isLoading, error } = useSelector((state) => state.salesOrders);
 
-  // VVV CORE LOGIC: Fetch data when the component loads VVV
+  //CORE LOGIC: Fetch data when the component loads 
   useEffect(() => {
     dispatch(fetchSalesOrders());
   }, [dispatch]);

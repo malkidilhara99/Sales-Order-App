@@ -74,7 +74,7 @@ function SalesOrderPage() {
     const clientsState = useSelector(state => state.clients || { list: [], isLoading: false });
     const itemsState = useSelector(state => state.items || { list: [], isLoading: false });
 
-    // VVV CALL THE HOOK TO GET ALL LOGIC AND STATE VVV
+    //  CALL THE HOOK TO GET ALL LOGIC AND STATE 
     const {
         orderData,
         handleClientSelect,
@@ -83,7 +83,7 @@ function SalesOrderPage() {
         addNewLineItem,
         removeItemLine,
         handleSave,
-        // VVV MODAL STATE FROM HOOK VVV
+ 
         showPrintConfirm,
         handlePrintConfirm,
         savedOrderId

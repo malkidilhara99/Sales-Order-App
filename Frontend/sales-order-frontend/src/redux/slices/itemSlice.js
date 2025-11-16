@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getAllItems } from '../../services/orderApi'; 
 
-// VVV THE 'EXPORT' KEYWORD HERE IS CRITICAL VVV
+
 export const fetchItems = createAsyncThunk(
   'items/fetchItems',
   async (_, { rejectWithValue }) => {
