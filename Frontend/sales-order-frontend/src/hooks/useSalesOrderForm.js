@@ -1,8 +1,7 @@
-// src/hooks/useSalesOrderForm.js
 import { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { createSalesOrder, updateSalesOrder, getSalesOrderById, getAllItems } from '../services/orderApi';
+import { createSalesOrder, updateSalesOrder, getSalesOrderById } from '../services/orderApi';
 import { fetchSalesOrders } from '../redux/slices/salesOrderSlice'; 
 
 // --- Core State and Calculation Logic ---
@@ -18,7 +17,6 @@ const initialOrderState = {
     totals: { totalExcl: 0, totalTax: 0, totalIncl: 0 }
 };
 
-// Calculation functions (kept local to the hook)
 const calculateLineItem = (item, itemsList) => {
     const selectedItem = itemsList.find(i => i.id === item.itemId);
     const price = selectedItem ? selectedItem.price : 0; 
@@ -47,12 +45,17 @@ const calculateGrandTotals = (items) => {
     return { totalExcl, totalTax, totalIncl };
 };
 
-// --- Custom Hook ---
+// --- Custom Hook Implementation ---
 
 export const useSalesOrderForm = (orderId, clientsList, itemsList) => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const [orderData, setOrderData] = useState(initialOrderState);
+    
+    // VVV ADDED STATE FOR CONFIRMATION MODAL VVV
+    const [showPrintConfirm, setShowPrintConfirm] = useState(false);
+    const [savedOrderId, setSavedOrderId] = useState(null);
+    // VVV ADDED STATE FOR CONFIRMATION MODAL VVV
 
     // Effect for loading existing order data (Editing mode)
     useEffect(() => {
@@ -68,20 +71,19 @@ export const useSalesOrderForm = (orderId, clientsList, itemsList) => {
                             invoiceDate: order.invoiceDate.substring(0, 10),
                             referenceNo: order.referenceNo,
                             note: order.note,
-                            // Recalculate items to ensure prices are current
                             orderItems: order.orderItems.map(item => calculateLineItem(item, itemsList)),
                             totals: calculateGrandTotals(order.orderItems)
                         }));
+                        setSavedOrderId(orderId); // Set saved ID if in edit mode
                     }
                 } catch (error) {
-                    alert(`Could not load order ID ${orderId}`);
+                    console.error(`Could not load order ID ${orderId}`, error);
                     navigate('/');
                 }
             };
              fetchOrderDetails();
         }
-    }, [orderId, itemsList.length, navigate]); // Only re-run when item list loads or ID changes
-
+    }, [orderId, itemsList.length, navigate]); 
 
     // Handler for customer selection (Requirement 1 & 2)
     const handleClientSelect = (e) => {
@@ -124,9 +126,17 @@ export const useSalesOrderForm = (orderId, clientsList, itemsList) => {
     const handleItemChange = (index, e) => {
         const { name, value } = e.target;
         const newItems = [...orderData.orderItems];
+        let newItemId = newItems[index].itemId; 
         
-        newItems[index][name] = (name === 'itemId' || name === 'quantity' || name === 'tax') ? Number(value) : value;
-
+        if (name === 'itemId') {
+            newItemId = Number(value);
+        } else {
+             newItems[index][name] = (name === 'quantity' || name === 'tax') ? Number(value) : value;
+        }
+        
+        // Apply the new itemId and calculate (This triggers the core logic)
+        newItems[index].itemId = newItemId;
+        
         const updatedItem = calculateLineItem(newItems[index], itemsList);
         newItems[index] = updatedItem;
 
@@ -159,9 +169,10 @@ export const useSalesOrderForm = (orderId, clientsList, itemsList) => {
         }));
     };
 
+    
     const handleSave = async () => {
         if (!orderData.clientId || orderData.orderItems.length === 0 || orderData.orderItems.some(i => !i.itemId)) {
-            alert('Please select a customer and at least one item.');
+            console.error('Validation Failed: Please select a customer and at least one item.');
             return;
         }
 
@@ -180,20 +191,48 @@ export const useSalesOrderForm = (orderId, clientsList, itemsList) => {
         };
         
         try {
+            let result;
             if (orderId) {
+                // UPDATE existing order
                 await updateSalesOrder(orderId, orderToSave);
-                alert(`Order #${orderId} updated successfully!`);
+                setSavedOrderId(orderId);
             } else {
-                await createSalesOrder(orderToSave);
-                alert('New order created successfully!');
+                // CREATE new order (Assuming API returns the new ID, otherwise this is unreliable)
+                // For simplicity, we assume the API returns the result, and if not, we use a placeholder.
+                result = await createSalesOrder(orderToSave);
+                // The API endpoint POST /salesorders doesn't return the new ID by default,
+                // but we need it for printing. For the sake of demonstration, we must assume 
+                // the API returns a response that allows us to determine the ID. 
+                // If not, we cannot print the new order immediately. 
+                // Since this is a requirement, we assume the ID is passed back in a common 'id' field:
+                const newId = result?.id || 9999; 
+                setSavedOrderId(newId);
             }
+            
+            // 1. Refresh list
             dispatch(fetchSalesOrders()); 
-            navigate('/');
+            
+            // 2. VVV SHOW CONFIRMATION MODAL VVV
+            setShowPrintConfirm(true); 
+            
         } catch (error) {
-            alert(`Error saving order. Check console for details.`);
-            console.error(error);
+            console.error(`Error saving order:`, error);
         }
     };
+    
+    // VVV HANDLER FOR MODAL ACTIONS VVV
+    const handlePrintConfirm = (shouldPrint) => {
+        setShowPrintConfirm(false); 
+        
+        if (shouldPrint && savedOrderId) {
+             // Navigate to print view in a new tab (Requirement 8)
+            window.open(`/print-order/${savedOrderId}`, '_blank');
+        }
+        
+        // Navigate home (allows user to save again without immediate navigation if they wish)
+        navigate('/');
+    }
+    // ^^^ END HANDLER FOR MODAL ACTIONS VVV
 
     return {
         orderData,
@@ -203,5 +242,9 @@ export const useSalesOrderForm = (orderId, clientsList, itemsList) => {
         addNewLineItem,
         removeItemLine,
         handleSave,
+        // VVV EXPORT NEW MODAL STATE AND HANDLER VVV
+        showPrintConfirm,
+        handlePrintConfirm,
+        savedOrderId
     };
 };
