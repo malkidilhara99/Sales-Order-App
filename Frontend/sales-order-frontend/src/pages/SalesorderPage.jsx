@@ -107,17 +107,17 @@ function SalesOrderPage() {
                 onConfirm={handlePrintConfirm} 
             />
 
-            <div className="mx-auto font-sans bg-white border-2 border-black shadow-lg max-w-7xl">
+            <div className="mx-auto font-sans bg-white border-2 border-black rounded-lg shadow-lg max-w-7xl">
                 {/* Window Header */}
-                <div className="flex items-center justify-between px-3 py-1 bg-gray-200 border-b-2 border-black">
+                <div className="flex items-center justify-between px-3 py-1 bg-gray-200 border-b-2 border-black rounded-t-lg">
                     <div className="flex items-center space-x-1.5">
-                        <div className="w-3.5 h-3.5 rounded-full border border-black flex items-center justify-center text-black text-sm font-black">
+                        <div className="w-3.5 h-3.5 rounded-full border border-black flex items-center justify-center text-white bg-black text-sm font-black">
                             <span className="-mt-px leading-none">+</span>
                         </div>
-                        <div className="w-3.5 h-3.5 rounded-full border border-black flex items-center justify-center text-black text-sm font-black">
+                        <div className="w-3.5 h-3.5 rounded-full border border-black flex items-center justify-center text-white bg-black text-sm font-black">
                             <span className="-mt-px leading-none">-</span>
                         </div>
-                        <div className="w-3.5 h-3.5 rounded-full border border-black flex items-center justify-center text-black text-sm font-black">
+                        <div className="w-3.5 h-3.5 rounded-full border border-black flex items-center justify-center text-white bg-black text-sm font-black">
                             <span className="-mt-px leading-none">×</span>
                         </div>
                     </div>
